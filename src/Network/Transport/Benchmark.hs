@@ -5,7 +5,6 @@
 --
 module Network.Transport.Benchmark
   ( benchmarkPingLocal
-  , prepareEnvironment
   , BenchmarkOptions(..)
   ) where
 
@@ -18,12 +17,6 @@ import Control.Monad
 import Control.Concurrent.Async
 import Control.Exception (throw)
 import Prelude
-
-prepareEnvironment :: IO Transport -> Int -> BenchmarkOptions -> IO ()
-prepareEnvironment mkTransport epnum options = do
-  transport <- mkTransport
-  eps <- replicateM epnum $ either throw id <$>  newEndPoint transport
-  return ()
 
 data BenchmarkOptions = BenchmarkOptions
   { roundCount  :: Int -- ^ Number of pings to send
