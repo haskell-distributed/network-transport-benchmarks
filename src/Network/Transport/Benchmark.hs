@@ -13,6 +13,7 @@ import Control.Applicative
 import Network.Transport
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import Data.Foldable
 import Control.Monad
 import Control.Concurrent.Async
 import Control.Exception (throw)
@@ -34,14 +35,17 @@ benchmarkPingLocal :: [EndPoint]
 benchmarkPingLocal eps options = void $ mapConcurrently pingProcess eps where
   names = map address eps
   pingProcess ep = void (join (waitBoth <$> async sender <*> async receiver)) where
-    sender = mapM mkConnection names >>= wrapper where
+    sender = mapM mkConnection names >>= wrapper . zip names where
       mkConnection c = either throw id <$> connect ep c ReliableOrdered
                                                         defaultConnectHints
       wrapper connections = go (roundCount options) connections where
         go 0 []     = return ()
         go n []     = go (n-1) connections
-        go n (c:cs) = do either throw id <$> send c (mkMessage options)
-                         go n cs
+        go n ((m,c):cs) = do
+           ec <- connect ep m ReliableOrdered defaultConnectHints
+           either throw id <$> send c (mkMessage options)
+           traverse_ close ec
+           go n cs
     receiver = go (length eps * roundCount options) where
       go 0 = return ()
       go n = do
